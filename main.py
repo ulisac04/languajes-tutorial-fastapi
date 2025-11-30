@@ -1,10 +1,12 @@
-from fastapi import FastAPI, Query
+from fastapi import Body, FastAPI, Query, HTTPException
 
 app = FastAPI(
     title="My API",
     description="This is a sample API built with FastAPI.",
 )
-BLOG_POSTS = [
+
+
+LANGUAGES = [
     {"id": 1, "title": "Python", "content": "Python es un lenguaje dinámico y fácil de aprender, con una amplia biblioteca estándar. Muy usado en desarrollo web, scripting, ciencia de datos y automatización."},
     {"id": 2, "title": "JavaScript", "content": "JavaScript es el lenguaje de la web: orientado a eventos, se ejecuta en navegadores y en Node.js. Ideal para interfaces interactivas y aplicaciones full-stack."},
     {"id": 3, "title": "Java", "content": "Java es un lenguaje estáticamente tipado que corre sobre la JVM. Popular en aplicaciones empresariales por su rendimiento, portabilidad y robustez."},
@@ -18,20 +20,56 @@ BLOG_POSTS = [
 def home():
     return {"message": "Welcome to My API! 2025"}
 
-@app.get("/posts")
-def get_posts(query: str | None = Query(default=None, description="Search query for blog posts")):
+@app.get("/language")
+def get_languages(query: str | None = Query(default=None, description="Search query for blog posts")):
     if query:
-        filtered_posts = [post for post in BLOG_POSTS if query.lower() in post["title"].lower() or query.lower() in post["content"].lower()]
-        return {"data": filtered_posts, "query": query}
+        filtered_language = [language for language in LANGUAGES if query.lower() in language["title"].lower() or query.lower() in language["content"].lower()]
+        return {"data": filtered_language, "query": query}
     else:
-        return {"data": BLOG_POSTS, "query": query}
+        return {"data": LANGUAGES, "query": query}
 
-@app.get("/posts/{post_id}")
-def get_post(post_id: int, with_content: bool = Query(default=True, description="Include content in the response")):
-    for post in BLOG_POSTS:
-        if post["id"] == post_id:
+@app.get("/language/{id}")
+def get_language(id: int, with_content: bool = Query(default=True, description="Include content in the response")):
+    for language in LANGUAGES:
+        if language["id"] == id:
             if not with_content:
-                return {"data": {"id": post["id"], "title": post["title"]}}
-            return {"data": post}
-    return {"error": "Post not found"}
+                return {"data": {"id": language["id"], "title": language["title"]}}
+            return {"data": language}
+    raise HTTPException(status_code=404, detail="no se encontro el language")
 
+@app.post("/language")
+def create_language(language: dict = Body(...)):
+
+    if "title" not in language or "content" not in language:
+        return {"error": "title y content son requeridos"}
+    
+    if not str(language["title"]).strip():
+        return {"error": "title no puede estar vacio"}
+    
+    new_id = (LANGUAGES[-1]["id"]+1) if LANGUAGES else 1
+    new_language = {"id": new_id, "title": language["title"], "content": language["content"]}
+    LANGUAGES.append(new_language)
+
+    return {"message": "language creado", "data": new_language}
+
+
+@app.put("/language/{id}")
+def update_language(id: int, data: dict = Body(...)):
+    for language in LANGUAGES:
+        if language["id"] == id:
+            if "title" in data:
+                language["title"] = data["title"]
+            if "content" in data:
+                language["content"] = data["content"]
+            return { "message": "language actualizado", "data": language }
+        
+    raise HTTPException(status_code=404, detail="no se encontro el language")
+
+
+@app.delete("/language/{id}", status_code=204)
+def delete_language(id: int):
+    for index, language in enumerate(LANGUAGES):
+        if language["id"] == id:
+            LANGUAGES.pop(index)
+            return
+    raise HTTPException(status_code=404, detail="no se encontro el language")

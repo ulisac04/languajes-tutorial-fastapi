@@ -1,5 +1,6 @@
 from fastapi import Body, FastAPI, Query, HTTPException
 from pydantic import BaseModel
+from typing import Optional
 
 app = FastAPI(
     title="My API",
@@ -8,13 +9,13 @@ app = FastAPI(
 
 class LanguageBase(BaseModel):
     title: str
-    content: str
+    content: Optional[str] = "new Language"
 
 class LanguageCreate(LanguageBase):
     pass
 
 class LanguageUpdate(LanguageBase):
-    pass
+    content: Optional[str] = None
 
 
 LANGUAGES = [

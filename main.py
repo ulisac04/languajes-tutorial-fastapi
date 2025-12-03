@@ -1,9 +1,20 @@
 from fastapi import Body, FastAPI, Query, HTTPException
+from pydantic import BaseModel
 
 app = FastAPI(
     title="My API",
     description="This is a sample API built with FastAPI.",
 )
+
+class LanguageBase(BaseModel):
+    title: str
+    content: str
+
+class LanguageCreate(LanguageBase):
+    pass
+
+class LanguageUpdate(LanguageBase):
+    pass
 
 
 LANGUAGES = [
@@ -38,29 +49,23 @@ def get_language(id: int, with_content: bool = Query(default=True, description="
     raise HTTPException(status_code=404, detail="no se encontro el language")
 
 @app.post("/language")
-def create_language(language: dict = Body(...)):
-
-    if "title" not in language or "content" not in language:
-        return {"error": "title y content son requeridos"}
-    
-    if not str(language["title"]).strip():
-        return {"error": "title no puede estar vacio"}
-    
+def create_language(language: LanguageCreate):
     new_id = (LANGUAGES[-1]["id"]+1) if LANGUAGES else 1
-    new_language = {"id": new_id, "title": language["title"], "content": language["content"]}
+    new_language = {"id": new_id, "title": language.title, "content": language.content}
     LANGUAGES.append(new_language)
 
     return {"message": "language creado", "data": new_language}
 
 
 @app.put("/language/{id}")
-def update_language(id: int, data: dict = Body(...)):
+def update_language(id: int, data: LanguageUpdate):
     for language in LANGUAGES:
         if language["id"] == id:
-            if "title" in data:
-                language["title"] = data["title"]
-            if "content" in data:
-                language["content"] = data["content"]
+            payload = data.model_dump(exclude_unset=True)
+            if "title" in payload:
+                language["title"] = payload["title"]
+            if "content" in payload:
+                language["content"] = payload["content"]
             return { "message": "language actualizado", "data": language }
         
     raise HTTPException(status_code=404, detail="no se encontro el language")

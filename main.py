@@ -1,5 +1,5 @@
 from fastapi import Body, FastAPI, Query, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 app = FastAPI(
@@ -11,8 +11,20 @@ class LanguageBase(BaseModel):
     title: str
     content: Optional[str] = "new Language"
 
-class LanguageCreate(LanguageBase):
-    pass
+class LanguageCreate(BaseModel):
+    title: str = Field(
+        ...,
+        min_length=3,
+        max_length=20,
+        description="Titulo minimo 3 maximo 20",
+        examples=["C++", "Java"]
+    )
+    content: Optional[str] = Field(
+        default="Contenido pendiente",
+        min_length=10,
+        description="Descripcion del lenguaje",
+        examples=["C++ es de bajo nivel"]
+    )
 
 class LanguageUpdate(LanguageBase):
     content: Optional[str] = None

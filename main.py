@@ -71,7 +71,7 @@ def get_language(id: int, with_content: bool = Query(default=True, description="
     for language in LANGUAGES:
         if language["id"] == id:
             if not with_content:
-                return {"data": {"id": language["id"], "title": language["title"]}}
+                return {"id": language["id"], "title": language["title"]}
             return language
     raise HTTPException(status_code=404, detail="no se encontro el language")
 

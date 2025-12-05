@@ -1,6 +1,6 @@
 from fastapi import Body, FastAPI, Query, HTTPException
-from pydantic import BaseModel, Field
-from typing import Optional
+from pydantic import BaseModel, Field, field_validator
+from typing import List, Optional, Union
 
 app = FastAPI(
     title="My API",
@@ -9,7 +9,7 @@ app = FastAPI(
 
 class LanguageBase(BaseModel):
     title: str
-    content: Optional[str] = "new Language"
+    content: str
 
 class LanguageCreate(BaseModel):
     title: str = Field(
@@ -26,8 +26,23 @@ class LanguageCreate(BaseModel):
         examples=["C++ es de bajo nivel"]
     )
 
+    @field_validator("title")
+    @classmethod
+    def not_allowed_title(cls, value: str) -> str:
+        if "xxx" in value.lower():
+            raise ValueError("El titulo no puede ser 'xxx'")
+        return value
+
 class LanguageUpdate(LanguageBase):
     content: Optional[str] = None
+
+class LanguagePublic(LanguageBase):
+    id: int
+
+class LanguageSummary(BaseModel):
+    id: int
+    title: str
+
 
 
 LANGUAGES = [
@@ -44,21 +59,20 @@ LANGUAGES = [
 def home():
     return {"message": "Welcome to My API! 2025"}
 
-@app.get("/language")
+@app.get("/language", response_model=List[LanguagePublic])
 def get_languages(query: str | None = Query(default=None, description="Search query for blog posts")):
     if query:
-        filtered_language = [language for language in LANGUAGES if query.lower() in language["title"].lower() or query.lower() in language["content"].lower()]
-        return {"data": filtered_language, "query": query}
+        return [language for language in LANGUAGES if query.lower() in language["title"].lower() or query.lower() in language["content"].lower()]
     else:
-        return {"data": LANGUAGES, "query": query}
+        return LANGUAGES
 
-@app.get("/language/{id}")
+@app.get("/language/{id}", response_model=Union[LanguagePublic, LanguageSummary])
 def get_language(id: int, with_content: bool = Query(default=True, description="Include content in the response")):
     for language in LANGUAGES:
         if language["id"] == id:
             if not with_content:
                 return {"data": {"id": language["id"], "title": language["title"]}}
-            return {"data": language}
+            return language
     raise HTTPException(status_code=404, detail="no se encontro el language")
 
 @app.post("/language")

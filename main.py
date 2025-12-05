@@ -7,9 +7,13 @@ app = FastAPI(
     description="This is a sample API built with FastAPI.",
 )
 
+class Tag(BaseModel):
+    name: str = Field(..., max_length=30, description="Nombre de la etiqueta")
+
 class LanguageBase(BaseModel):
     title: str
     content: str
+    tags: Optional[List[Tag]] = []
 
 class LanguageCreate(BaseModel):
     title: str = Field(
@@ -25,6 +29,7 @@ class LanguageCreate(BaseModel):
         description="Descripcion del lenguaje",
         examples=["C++ es de bajo nivel"]
     )
+    tags: List[Tag] = []
 
     @field_validator("title")
     @classmethod
@@ -43,8 +48,6 @@ class LanguageSummary(BaseModel):
     id: int
     title: str
 
-
-
 LANGUAGES = [
     {"id": 1, "title": "Python", "content": "Python es un lenguaje dinámico y fácil de aprender, con una amplia biblioteca estándar. Muy usado en desarrollo web, scripting, ciencia de datos y automatización."},
     {"id": 2, "title": "JavaScript", "content": "JavaScript es el lenguaje de la web: orientado a eventos, se ejecuta en navegadores y en Node.js. Ideal para interfaces interactivas y aplicaciones full-stack."},
@@ -54,6 +57,8 @@ LANGUAGES = [
     {"id": 6, "title": "Go", "content": "Go (Golang) es un lenguaje compilado desarrollado por Google, conocido por su simplicidad, concurrencia nativa (goroutines) y alto rendimiento en servicios y microservicios."},
     {"id": 7, "title": "C++", "content": "C++ es un lenguaje de propósito general que combina programación de bajo nivel y abstracciones de alto nivel. Muy usado en sistemas, software de alto rendimiento y motores de juego."}
 ]
+
+
 
 @app.get("/")
 def home():
@@ -75,16 +80,17 @@ def get_language(id: int, with_content: bool = Query(default=True, description="
             return language
     raise HTTPException(status_code=404, detail="no se encontro el language")
 
-@app.post("/language")
+
+@app.post("/language", response_model=LanguagePublic, response_description="Item creado(OK)")
 def create_language(language: LanguageCreate):
     new_id = (LANGUAGES[-1]["id"]+1) if LANGUAGES else 1
-    new_language = {"id": new_id, "title": language.title, "content": language.content}
+    new_language = {"id": new_id, "title": language.title, "content": language.content, "tags": [tag.model_dump() for tag in language.tags]}
     LANGUAGES.append(new_language)
+    
+    return new_language
 
-    return {"message": "language creado", "data": new_language}
 
-
-@app.put("/language/{id}")
+@app.put("/language/{id}", response_model=LanguagePublic, response_model_exclude_none=True)
 def update_language(id: int, data: LanguageUpdate):
     for language in LANGUAGES:
         if language["id"] == id:
@@ -93,7 +99,7 @@ def update_language(id: int, data: LanguageUpdate):
                 language["title"] = payload["title"]
             if "content" in payload:
                 language["content"] = payload["content"]
-            return { "message": "language actualizado", "data": language }
+            return language
         
     raise HTTPException(status_code=404, detail="no se encontro el language")
 

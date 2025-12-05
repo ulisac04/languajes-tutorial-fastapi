@@ -40,6 +40,8 @@ class LanguageCreate(BaseModel):
 
 class LanguageUpdate(LanguageBase):
     content: Optional[str] = None
+    title: Optional[str] = None
+    title: Optional[Tag] = None
 
 class LanguagePublic(LanguageBase):
     id: int
@@ -86,7 +88,7 @@ def create_language(language: LanguageCreate):
     new_id = (LANGUAGES[-1]["id"]+1) if LANGUAGES else 1
     new_language = {"id": new_id, "title": language.title, "content": language.content, "tags": [tag.model_dump() for tag in language.tags]}
     LANGUAGES.append(new_language)
-    
+
     return new_language
 
 
@@ -99,6 +101,13 @@ def update_language(id: int, data: LanguageUpdate):
                 language["title"] = payload["title"]
             if "content" in payload:
                 language["content"] = payload["content"]
+            if "tags" in payload:
+                if "tags" not in language:
+                    language["tags"] = []
+                if len(payload["tags"]) == 0: 
+                    language["tags"] = []
+                else:
+                    language["tags"].extend(t for t in payload["tags"])
             return language
         
     raise HTTPException(status_code=404, detail="no se encontro el language")

@@ -56,7 +56,20 @@ LANGUAGES = [
     {"id": 4, "title": "C#", "content": "C# es un lenguaje moderno de Microsoft, orientado a objetos, con buen soporte para desarrollo de aplicaciones de escritorio, web y juegos (Unity). Tipado estático y potente ecosistema .NET."},
     {"id": 5, "title": "PHP", "content": "PHP es un lenguaje de scripting ampliamente usado para desarrollo web del lado del servidor. Fácil de desplegar, con muchas aplicaciones y frameworks como Laravel y Symfony."},
     {"id": 6, "title": "Go", "content": "Go (Golang) es un lenguaje compilado desarrollado por Google, conocido por su simplicidad, concurrencia nativa (goroutines) y alto rendimiento en servicios y microservicios."},
-    {"id": 7, "title": "C++", "content": "C++ es un lenguaje de propósito general que combina programación de bajo nivel y abstracciones de alto nivel. Muy usado en sistemas, software de alto rendimiento y motores de juego."}
+    {"id": 7, "title": "C++", "content": "C++ es un lenguaje de propósito general que combina programación de bajo nivel y abstracciones de alto nivel. Muy usado en sistemas, software de alto rendimiento y motores de juego."},
+    {"id": 8, "title": "Ruby", "content": "Ruby es un lenguaje dinámico y reflexivo, enfocado en la simplicidad y productividad. Famoso por su framework Ruby on Rails para desarrollo web rápido."},
+    {"id": 9, "title": "Swift", "content": "Swift es un lenguaje potente e intuitivo creado por Apple para desarrollar apps de iOS, macOS, watchOS y tvOS. Es seguro, rápido y moderno."},
+    {"id": 10, "title": "Kotlin", "content": "Kotlin es un lenguaje moderno que corre en la JVM, totalmente interoperable con Java. Es el lenguaje preferido por Google para el desarrollo de aplicaciones Android."},
+    {"id": 11, "title": "Rust", "content": "Rust es un lenguaje de sistemas enfocado en la seguridad y el rendimiento. Garantiza la seguridad de memoria sin recolector de basura, ideal para software crítico."},
+    {"id": 12, "title": "TypeScript", "content": "TypeScript es un superconjunto de JavaScript que añade tipado estático opcional. Mejora la mantenibilidad y escalabilidad de grandes proyectos web."},
+    {"id": 13, "title": "Perl", "content": "Perl es un lenguaje de alto nivel, interpretado y dinámico. Históricamente fuerte en procesamiento de texto y administración de sistemas."},
+    {"id": 14, "title": "Scala", "content": "Scala combina programación orientada a objetos y funcional. Corre en la JVM y es muy usado en procesamiento de datos masivos (Spark)."},
+    {"id": 15, "title": "R", "content": "R es un lenguaje y entorno de software para computación estadística y gráficos. Es el estándar en análisis de datos, estadística y bioinformática."},
+    {"id": 16, "title": "Dart", "content": "Dart es un lenguaje optimizado para clientes, desarrollado por Google. Es la base del framework Flutter para crear aplicaciones móviles nativas multiplataforma."},
+    {"id": 17, "title": "Lua", "content": "Lua es un lenguaje de scripting ligero, rápido y embebible. Muy popular en la industria de videojuegos (como en Roblox o World of Warcraft) para lógica de scripts."},
+    {"id": 18, "title": "Haskell", "content": "Haskell es un lenguaje puramente funcional con tipado estático fuerte. Es conocido por su elegancia matemática y uso en investigación académica e industrial."},
+    {"id": 19, "title": "Elixir", "content": "Elixir es un lenguaje funcional y concurrente construido sobre la máquina virtual de Erlang (BEAM). Ideal para sistemas distribuidos, tolerantes a fallos y de baja latencia."},
+    {"id": 20, "title": "Matlab", "content": "Matlab es un entorno de computación numérica y lenguaje de programación. Ampliamente utilizado en ingeniería y ciencia para cálculos matriciales y simulación."}
 ]
 
 
@@ -66,7 +79,12 @@ def home():
     return {"message": "Welcome to My API! 2025"}
 
 @app.get("/language", response_model=List[LanguagePublic])
-def get_languages(query: str | None = Query(default=None, description="Search query for blog posts")):
+def get_languages(query: Optional[str] | None = Query(
+    default=None, description="Search query for blog posts",
+    alias="search",
+    min_length=3,
+    max_length=20,
+)):
     if query:
         return [language for language in LANGUAGES if query.lower() in language["title"].lower() or query.lower() in language["content"].lower()]
     else:

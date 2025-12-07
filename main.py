@@ -1,6 +1,7 @@
 from fastapi import Body, FastAPI, Query, HTTPException, Path
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Literal, Optional, Union
+import math
 
 app = FastAPI(
     title="My API",
@@ -50,9 +51,15 @@ class LanguageSummary(BaseModel):
     title: str
 
 class PaginatedItem(BaseModel):
+    page: int
+    per_page: int
     total: int
-    limit: int
-    offset: int
+    total_pages: int
+    has_prev: bool
+    has_next: bool
+    order_by: Literal["id","titlle"]
+    direction: Literal["asc", "desc"]
+    search: Optional[str]
     items: List[LanguagePublic]
 
 LANGUAGES = [
@@ -98,10 +105,10 @@ def get_languages(query: Optional[str] | None = Query(
         le=50,
         description="Numero maximo de resultados (1-50)"
     ),
-    offset: int = Query(
-        default=0,
-        ge=0,
-        description="Elementos a saltar"
+    page: int = Query(
+        default=1,
+        ge=1,
+        description="Pagina"
     ),
     order_by: Literal["id","titlle"] = Query(
         default="id", 
@@ -118,10 +125,23 @@ def get_languages(query: Optional[str] | None = Query(
     results = sorted(results, key=lambda l: l[order_by], reverse=(direction == "desc"))
 
     total = len(results)
+    offset = (page-1) * limit
 
     items = results[offset : offset + limit]
-    
-    return PaginatedItem(total=total, limit=limit, offset=offset, items=items)
+    total_pages = math.ceil(total / limit)
+
+    return PaginatedItem(
+        page=page,
+        total=total,
+        items=items,
+        per_page=limit,
+        order_by=order_by,
+        direction=direction,
+        total_pages=total_pages,
+        search=query,
+        has_prev= page > 1,
+        has_next= page < total_pages
+        )
 
 @app.get("/language/{id}", response_model=Union[LanguagePublic, LanguageSummary])
 def get_language(id: int = Path(

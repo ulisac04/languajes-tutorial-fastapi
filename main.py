@@ -1,4 +1,4 @@
-from fastapi import Body, FastAPI, Query, HTTPException
+from fastapi import Body, FastAPI, Query, HTTPException, Path
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Union
 
@@ -13,7 +13,7 @@ class Tag(BaseModel):
 class LanguageBase(BaseModel):
     title: str
     content: str
-    tags: Optional[List[Tag]] = []
+    tags: Optional[List[Tag]] = Field(default_factory=list) # []
 
 class LanguageCreate(BaseModel):
     title: str = Field(
@@ -29,7 +29,7 @@ class LanguageCreate(BaseModel):
         description="Descripcion del lenguaje",
         examples=["C++ es de bajo nivel"]
     )
-    tags: List[Tag] = []
+    tags: List[Tag] = Field(default_factory=list) # []
 
     @field_validator("title")
     @classmethod
@@ -40,8 +40,7 @@ class LanguageCreate(BaseModel):
 
 class LanguageUpdate(LanguageBase):
     content: Optional[str] = None
-    title: Optional[str] = None
-    title: Optional[Tag] = None
+    title: Optional[str] = Field(None, min_length=3, max_length=100)
 
 class LanguagePublic(LanguageBase):
     id: int
@@ -74,7 +73,12 @@ def get_languages(query: str | None = Query(default=None, description="Search qu
         return LANGUAGES
 
 @app.get("/language/{id}", response_model=Union[LanguagePublic, LanguageSummary])
-def get_language(id: int, with_content: bool = Query(default=True, description="Include content in the response")):
+def get_language(id: int = Path(
+    ...,
+    gt=0,
+    title="ID del language",
+    description="ID del language"
+), with_content: bool = Query(default=True, description="Include content in the response")):
     for language in LANGUAGES:
         if language["id"] == id:
             if not with_content:

@@ -1,6 +1,6 @@
 from fastapi import Body, FastAPI, Query, HTTPException, Path
 from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional, Union
+from typing import List, Literal, Optional, Union
 
 app = FastAPI(
     title="My API",
@@ -80,15 +80,38 @@ def home():
 
 @app.get("/language", response_model=List[LanguagePublic])
 def get_languages(query: Optional[str] | None = Query(
-    default=None, description="Search query for blog posts",
-    alias="search",
-    min_length=3,
-    max_length=20,
-)):
+        default=None,
+        description="Search query for blog posts",
+        alias="search",
+        min_length=3,
+        max_length=20,
+    ),
+    limit: int = Query(
+        default=5,
+        ge=1,
+        le=50,
+        description="Numero maximo de resultados (1-50)"
+    ),
+    offset: int = Query(
+        default=0,
+        ge=0,
+        description="Elementos a saltar"
+    ),
+    order_by: Literal["id","titlle"] = Query(
+        default="id", 
+        description="Ordenar por: id/title"
+    ),
+    direction: Literal["asc", "desc"] = Query(
+        default="asc"
+    )
+):
+    results = LANGUAGES
     if query:
-        return [language for language in LANGUAGES if query.lower() in language["title"].lower() or query.lower() in language["content"].lower()]
-    else:
-        return LANGUAGES
+        results = [language for language in results if query.lower() in language["title"].lower() or query.lower() in language["content"].lower()]
+    
+    results = sorted(results, key=lambda l: l[order_by], reverse=(direction == "desc"))
+    
+    return results[offset : offset + limit]
 
 @app.get("/language/{id}", response_model=Union[LanguagePublic, LanguageSummary])
 def get_language(id: int = Path(

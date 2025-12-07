@@ -49,6 +49,12 @@ class LanguageSummary(BaseModel):
     id: int
     title: str
 
+class PaginatedItem(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    items: List[LanguagePublic]
+
 LANGUAGES = [
     {"id": 1, "title": "Python", "content": "Python es un lenguaje dinámico y fácil de aprender, con una amplia biblioteca estándar. Muy usado en desarrollo web, scripting, ciencia de datos y automatización."},
     {"id": 2, "title": "JavaScript", "content": "JavaScript es el lenguaje de la web: orientado a eventos, se ejecuta en navegadores y en Node.js. Ideal para interfaces interactivas y aplicaciones full-stack."},
@@ -78,7 +84,7 @@ LANGUAGES = [
 def home():
     return {"message": "Welcome to My API! 2025"}
 
-@app.get("/language", response_model=List[LanguagePublic])
+@app.get("/language", response_model=PaginatedItem)
 def get_languages(query: Optional[str] | None = Query(
         default=None,
         description="Search query for blog posts",
@@ -110,8 +116,12 @@ def get_languages(query: Optional[str] | None = Query(
         results = [language for language in results if query.lower() in language["title"].lower() or query.lower() in language["content"].lower()]
     
     results = sorted(results, key=lambda l: l[order_by], reverse=(direction == "desc"))
+
+    total = len(results)
+
+    items = results[offset : offset + limit]
     
-    return results[offset : offset + limit]
+    return PaginatedItem(total=total, limit=limit, offset=offset, items=items)
 
 @app.get("/language/{id}", response_model=Union[LanguagePublic, LanguageSummary])
 def get_language(id: int = Path(

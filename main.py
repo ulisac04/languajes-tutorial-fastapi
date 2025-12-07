@@ -86,7 +86,6 @@ LANGUAGES = [
 ]
 
 
-
 @app.get("/")
 def home():
     return {"message": "Welcome to My API! 2025"}
@@ -143,6 +142,19 @@ def get_languages(query: Optional[str] | None = Query(
         has_next= page < total_pages
         )
 
+@app.get("/language/by-tags", response_model=List[LanguagePublic])
+def filter_by_tags(
+    tags: List[str] = Query(
+        ...,
+        min_length=1,
+        description="Una o mas tags"
+    )
+):
+    tags_power = [tag.lower() for tag in tags]
+    return [
+        lang for lang in LANGUAGES if any( tag["name"].lower() in tags_power for tag in lang.get("tags", []))
+    ]
+
 @app.get("/language/{id}", response_model=Union[LanguagePublic, LanguageSummary])
 def get_language(id: int = Path(
     ...,
@@ -195,3 +207,4 @@ def delete_language(id: int):
             LANGUAGES.pop(index)
             return
     raise HTTPException(status_code=404, detail="no se encontro el language")
+

@@ -91,33 +91,41 @@ def home():
     return {"message": "Welcome to My API! 2025"}
 
 @app.get("/language", response_model=PaginatedItem)
-def get_languages(query: Optional[str] | None = Query(
-        default=None,
-        description="Search query for blog posts",
-        alias="search",
-        min_length=3,
-        max_length=20,
-    ),
-    limit: int = Query(
-        default=5,
-        ge=1,
-        le=50,
-        description="Numero maximo de resultados (1-50)"
-    ),
-    page: int = Query(
-        default=1,
-        ge=1,
-        description="Pagina"
-    ),
-    order_by: Literal["id","titlle"] = Query(
-        default="id", 
-        description="Ordenar por: id/title"
-    ),
-    direction: Literal["asc", "desc"] = Query(
-        default="asc"
-    )
-):
+def get_languages(
+        text: Optional[str] | None = Query(
+            default=None,
+            deprecated=True,
+            description="Search query for language(deprecated)",
+        ),
+        query: Optional[str] | None = Query(
+            default=None,
+            description="Search query for language",
+            alias="search",
+            min_length=3,
+            max_length=20,
+            pattern="^[a-zA-Z0-9]+$"
+        ),
+        limit: int = Query(
+            default=5,
+            ge=1,
+            le=50,
+            description="Numero maximo de resultados (1-50)"
+        ),
+        page: int = Query(
+            default=1,
+            ge=1,
+            description="Pagina"
+        ),
+        order_by: Literal["id","titlle"] = Query(
+            default="id", 
+            description="Ordenar por: id/title"
+        ),
+        direction: Literal["asc", "desc"] = Query(
+            default="asc"
+        )
+    ):
     results = LANGUAGES
+    query = query or text
     if query:
         results = [language for language in results if query.lower() in language["title"].lower() or query.lower() in language["content"].lower()]
     

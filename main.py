@@ -2,6 +2,26 @@ from fastapi import Body, FastAPI, Query, HTTPException, Path
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Literal, Optional, Union
 import math
+import os
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, Session
+
+DATABASE_URL= os.getenv("DATABASE_URL", "sqlite:///./langs.db")
+print("Conectado a ", DATABASE_URL)
+
+engine_kwargs = {}
+
+if DATABASE_URL.startswith("sqlite"):
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
+
+engine = create_engine(
+    DATABASE_URL,
+    echo=True,
+    future=True,
+    **engine_kwargs
+)
+
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, class_=Session)
 
 app = FastAPI(
     title="My API",

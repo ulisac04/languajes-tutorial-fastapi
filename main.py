@@ -4,7 +4,7 @@ from typing import List, Literal, Optional, Union
 import math
 import os
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase
 
 DATABASE_URL= os.getenv("DATABASE_URL", "sqlite:///./langs.db")
 print("Conectado a ", DATABASE_URL)
@@ -22,6 +22,16 @@ engine = create_engine(
 )
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, class_=Session)
+
+class Base(DeclarativeBase):
+    pass
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 app = FastAPI(
     title="My API",

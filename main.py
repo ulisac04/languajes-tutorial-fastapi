@@ -1,11 +1,12 @@
 from datetime import datetime
-from fastapi import Body, FastAPI, Query, HTTPException, Path
-from pydantic import BaseModel, Field, field_validator
+from fastapi import Body, Depends, FastAPI, Query, HTTPException, Path, status
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import List, Literal, Optional, Union
 import math
 import os
 from sqlalchemy import Integer, create_engine, String, Text, DateTime
 from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.exc import SQLAlchemyError
 
 DATABASE_URL= os.getenv("DATABASE_URL", "sqlite:///./langs.db")
 print("Conectado a ", DATABASE_URL)
@@ -76,6 +77,7 @@ class LanguageUpdate(LanguageBase):
 
 class LanguagePublic(LanguageBase):
     id: int
+    model_config = ConfigDict(from_attributes=True)
 
 class LanguageSummary(BaseModel):
     id: int
@@ -219,14 +221,17 @@ def get_language(id: int = Path(
     raise HTTPException(status_code=404, detail="no se encontro el language")
 
 
-@app.post("/language", response_model=LanguagePublic, response_description="Item creado(OK)")
-def create_language(language: LanguageCreate):
-    new_id = (LANGUAGES[-1]["id"]+1) if LANGUAGES else 1
-    new_language = {"id": new_id, "title": language.title, "content": language.content, "tags": [tag.model_dump() for tag in language.tags]}
-    LANGUAGES.append(new_language)
-
-    return new_language
-
+@app.post("/language", response_model=LanguagePublic, response_description="Item creado(OK)", status_code=status.HTTP_201_CREATED)
+def create_language(language: LanguageCreate, db: Session = Depends(get_db)):
+    new_language = LanguageORM(title=language.title, content=language.content)
+    try:
+        db.add(new_language)
+        db.commit()
+        db.refresh(new_language)
+        return new_language
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Error al crear")
 
 @app.put("/language/{id}", response_model=LanguagePublic, response_model_exclude_none=True)
 def update_language(id: int, data: LanguageUpdate):

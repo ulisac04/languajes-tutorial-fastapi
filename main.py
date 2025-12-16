@@ -1,10 +1,11 @@
+from datetime import datetime
 from fastapi import Body, FastAPI, Query, HTTPException, Path
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Literal, Optional, Union
 import math
 import os
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase
+from sqlalchemy import Integer, create_engine, String, Text, DateTime
+from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase, Mapped, mapped_column
 
 DATABASE_URL= os.getenv("DATABASE_URL", "sqlite:///./langs.db")
 print("Conectado a ", DATABASE_URL)
@@ -91,6 +92,16 @@ class PaginatedItem(BaseModel):
     direction: Literal["asc", "desc"]
     search: Optional[str]
     items: List[LanguagePublic]
+
+class LanguageORM(Base):
+    __tablename__ = "languages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    title: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False),
+    create_at = Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+Base.metadata.create_all(bind=engine) # just in dev
 
 LANGUAGES = [
     {"id": 1, "title": "Python", "content": "Python es un lenguaje dinámico y fácil de aprender, con una amplia biblioteca estándar. Muy usado en desarrollo web, scripting, ciencia de datos y automatización."},

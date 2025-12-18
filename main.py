@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import List, Literal, Optional, Union
 import math
 import os
-from sqlalchemy import Integer, create_engine, String, Text, DateTime
+from sqlalchemy import Integer, create_engine, String, Text, DateTime, func, select
 from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -165,20 +165,34 @@ def get_languages(
         ),
         direction: Literal["asc", "desc"] = Query(
             default="asc"
-        )
+        ),
+        db: Session = Depends(get_db)
     ):
-    results = LANGUAGES
+    results = select(LanguageORM)
     query = query or text
     if query:
-        results = [language for language in results if query.lower() in language["title"].lower() or query.lower() in language["content"].lower()]
-    
-    results = sorted(results, key=lambda l: l[order_by], reverse=(direction == "desc"))
+        results = results.where(LanguageORM.title.ilike(f"%{query}%"))
 
-    total = len(results)
-    offset = (page-1) * limit
+    # ordenar resultados según order_by y direction
+    if order_by == "id":
+        order_column = LanguageORM.id
+    else:  # "titlle" -> columna title
+        order_column = LanguageORM.title
 
-    items = results[offset : offset + limit]
-    total_pages = math.ceil(total / limit)
+    if direction == "desc":
+        order_column = order_column.desc()
+
+    results = results.order_by(order_column)
+
+    # total de registros para paginación
+    total = db.scalar(select(func.count()).select_from(results.subquery())) or 0
+    offset = (page - 1) * limit
+    total_pages = math.ceil(total / limit) if total > 0 else 0
+
+    # ejecutar consulta paginada y obtener lista de items
+    items = db.execute(
+        results.offset(offset).limit(limit)
+    ).scalars().all()
 
     return PaginatedItem(
         page=page,
@@ -189,9 +203,9 @@ def get_languages(
         direction=direction,
         total_pages=total_pages,
         search=query,
-        has_prev= page > 1,
-        has_next= page < total_pages
-        )
+        has_prev=page > 1,
+        has_next=page < total_pages
+    )
 
 @app.get("/language/by-tags", response_model=List[LanguagePublic])
 def filter_by_tags(

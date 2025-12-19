@@ -231,7 +231,10 @@ def get_language(id: int = Path(
     title="ID del language",
     description="ID del language"
 ), with_content: bool = Query(default=True, description="Include content in the response"), db: Session = Depends(get_db)):
-    lang = db.get(LanguageORM, id)
+    
+    lang_find = select(LanguageORM).where(LanguageORM.id == id)
+    lang = db.execute(lang_find).scalar_one_or_none()
+
     if not lang:
         raise HTTPException(status_code=404, detail="no se encontro el language")
     

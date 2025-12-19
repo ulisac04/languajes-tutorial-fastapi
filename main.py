@@ -244,30 +244,26 @@ def get_language(id: int = Path(
     return LanguageSummary.model_validate(lang, from_attributes=True)
 
 
-@app.post("/language", response_model=LanguagePublic, response_description="Item creado(OK)", status_code=status.HTTP_201_CREATED)
-def create_language(language: LanguageCreate, db: Session = Depends(get_db)):
-    new_language = LanguageORM(title=language.title, content=language.content)
-    try:
-        db.add(new_language)
-        db.commit()
-        db.refresh(new_language)
-        return new_language
-    except SQLAlchemyError:
-        db.rollback()
-        raise HTTPException(status_code=500, detail="Error al crear")
-
 @app.put("/language/{id}", response_model=LanguagePublic, response_model_exclude_none=True)
 def update_language(id: int, data: LanguageUpdate, db: Session = Depends(get_db)):
-    
     lang_update = db.scalar(select(LanguageORM).where(LanguageORM.id == id))
-    if lang_update:
-        lang_update.title = data.title
-        lang_update.content = data.content
-        db.commit()
-        return LanguagePublic.model_validate(lang_update, from_attributes=True)
-        
-    raise HTTPException(status_code=404, detail="no se encontro el language")
+    if not lang_update:
+        raise HTTPException(status_code=404, detail="no se encontro el language")
 
+    update_data = data.model_dump(exclude_unset=True)
+
+    if "title" in update_data:
+        lang_update.title = update_data["title"]
+    if "content" in update_data and update_data["content"] is not None:
+        lang_update.content = update_data["content"]
+
+    try:
+        db.commit()
+        db.refresh(lang_update)
+        return LanguagePublic.model_validate(lang_update, from_attributes=True)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Error al actualizar")
 
 @app.delete("/language/{id}", status_code=204)
 def delete_language(id: int):

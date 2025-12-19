@@ -181,6 +181,8 @@ def get_languages(
 
     if direction == "desc":
         order_column = order_column.desc()
+    else:
+        order_column = order_column.asc()
 
     results = results.order_by(order_column)
 

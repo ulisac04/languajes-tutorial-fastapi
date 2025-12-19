@@ -83,6 +83,8 @@ class LanguageSummary(BaseModel):
     id: int
     title: str
 
+    model_config = ConfigDict(from_attributes=True)
+
 class PaginatedItem(BaseModel):
     page: int
     per_page: int
@@ -228,13 +230,15 @@ def get_language(id: int = Path(
     gt=0,
     title="ID del language",
     description="ID del language"
-), with_content: bool = Query(default=True, description="Include content in the response")):
-    for language in LANGUAGES:
-        if language["id"] == id:
-            if not with_content:
-                return {"id": language["id"], "title": language["title"]}
-            return language
-    raise HTTPException(status_code=404, detail="no se encontro el language")
+), with_content: bool = Query(default=True, description="Include content in the response"), db: Session = Depends(get_db)):
+    lang = db.get(LanguageORM, id)
+    if not lang:
+        raise HTTPException(status_code=404, detail="no se encontro el language")
+    
+    if with_content:
+        return LanguagePublic.model_validate(lang, from_attributes=True)
+
+    return LanguageSummary.model_validate(lang, from_attributes=True)
 
 
 @app.post("/language", response_model=LanguagePublic, response_description="Item creado(OK)", status_code=status.HTTP_201_CREATED)

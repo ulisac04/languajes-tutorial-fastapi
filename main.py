@@ -257,22 +257,14 @@ def create_language(language: LanguageCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Error al crear")
 
 @app.put("/language/{id}", response_model=LanguagePublic, response_model_exclude_none=True)
-def update_language(id: int, data: LanguageUpdate):
-    for language in LANGUAGES:
-        if language["id"] == id:
-            payload = data.model_dump(exclude_unset=True)
-            if "title" in payload:
-                language["title"] = payload["title"]
-            if "content" in payload:
-                language["content"] = payload["content"]
-            if "tags" in payload:
-                if "tags" not in language:
-                    language["tags"] = []
-                if len(payload["tags"]) == 0: 
-                    language["tags"] = []
-                else:
-                    language["tags"].extend(t for t in payload["tags"])
-            return language
+def update_language(id: int, data: LanguageUpdate, db: Session = Depends(get_db)):
+    
+    lang_update = db.scalar(select(LanguageORM).where(LanguageORM.id == id))
+    if lang_update:
+        lang_update.title = data.title
+        lang_update.content = data.content
+        db.commit()
+        return LanguagePublic.model_validate(lang_update, from_attributes=True)
         
     raise HTTPException(status_code=404, detail="no se encontro el language")
 

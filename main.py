@@ -266,10 +266,16 @@ def update_language(id: int, data: LanguageUpdate, db: Session = Depends(get_db)
         raise HTTPException(status_code=500, detail="Error al actualizar")
 
 @app.delete("/language/{id}", status_code=204)
-def delete_language(id: int):
-    for index, language in enumerate(LANGUAGES):
-        if language["id"] == id:
-            LANGUAGES.pop(index)
-            return
+def delete_language(id: int, db: Session = Depends(get_db)):
+    lang = db.scalar(select(LanguageORM).where(LanguageORM.id == id))
+    if not lang:
+        raise HTTPException(status_code=404, detail="no se encontro el language")
+    try:
+        db.delete(lang)
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Error al eliminar")
+
     raise HTTPException(status_code=404, detail="no se encontro el language")
 

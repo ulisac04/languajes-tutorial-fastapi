@@ -4,8 +4,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import List, Literal, Optional, Union
 import math
 import os
-from sqlalchemy import Integer, create_engine, String, Text, DateTime, func, select, UniqueConstraint
-from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import Integer, create_engine, String, Text, DateTime, func, select, UniqueConstraint, ForeignKey
+from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 DATABASE_URL= os.getenv("DATABASE_URL", "sqlite:///./langs.db")
@@ -97,6 +97,14 @@ class PaginatedItem(BaseModel):
     search: Optional[str]
     items: List[LanguagePublic]
 
+class FrameworkORM(Base):
+    __tablename__ = "framework"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    language_id: Mapped[Optional[int]] = mapped_column(ForeignKey("languages.id"))
+    language: Mapped[Optional["LanguageORM"]] = relationship(back_populates="frameworks")
+
 class LanguageORM(Base):
     __tablename__ = "languages"
     __table_args__ = (UniqueConstraint("title", name="unique_lang_title"),)
@@ -105,6 +113,10 @@ class LanguageORM(Base):
     title: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    frameworks: Mapped[List["FrameworkORM"]] = relationship(back_populates="language")
+
+
 
 Base.metadata.create_all(bind=engine) # just in dev
 

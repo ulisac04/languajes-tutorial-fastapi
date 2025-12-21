@@ -202,7 +202,7 @@ def create_language(data: LanguageCreate, db: Session = Depends(get_db)):
         return LanguagePublic.model_validate(new_lang, from_attributes=True)
     except IntegrityError:
         db.rollback()
-        raise IntegrityError(status_code=409, detail="el titulo ya existe")
+        raise HTTPException(status_code=409, detail="el titulo ya existe")
     except SQLAlchemyError:
         db.rollback()
         raise HTTPException(status_code=500, detail="Error al crear el language")

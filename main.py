@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import List, Literal, Optional, Union
 import math
 import os
-from sqlalchemy import Integer, create_engine, String, Text, DateTime, func, select
+from sqlalchemy import Integer, create_engine, String, Text, DateTime, func, select, UniqueConstraint
 from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -99,6 +99,7 @@ class PaginatedItem(BaseModel):
 
 class LanguageORM(Base):
     __tablename__ = "languages"
+    __table_args__ = (UniqueConstraint("title", name="unique_lang_title"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     title: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
@@ -187,6 +188,23 @@ def get_languages(
         has_next=page < total_pages
     )
 
+@app.post("/language", response_model=LanguagePublic, status_code=status.HTTP_201_CREATED)
+def create_language(data: LanguageCreate, db: Session = Depends(get_db)):
+    new_lang = LanguageORM(
+        title=data.title,
+        content=data.content or "Contenido pendiente",
+    )
+
+    try:
+        db.add(new_lang)
+        db.commit()
+        db.refresh(new_lang)
+        return LanguagePublic.model_validate(new_lang, from_attributes=True)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Error al crear el language")
+
+
 @app.get("/language/by-tags", response_model=List[LanguagePublic])
 def filter_by_tags(
     tags: List[str] = Query(
@@ -197,7 +215,6 @@ def filter_by_tags(
 ):
     tags_power = [tag.lower() for tag in tags]
     return [
-        lang for lang in LANGUAGES if any( tag["name"].lower() in tags_power for tag in lang.get("tags", []))
     ]
 
 @app.get("/language/{id}", response_model=Union[LanguagePublic, LanguageSummary])
@@ -254,4 +271,5 @@ def delete_language(id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Error al eliminar")
 
     raise HTTPException(status_code=404, detail="no se encontro el language")
+
 

@@ -6,7 +6,7 @@ import math
 import os
 from sqlalchemy import Integer, create_engine, String, Text, DateTime, func, select, UniqueConstraint
 from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase, Mapped, mapped_column
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 DATABASE_URL= os.getenv("DATABASE_URL", "sqlite:///./langs.db")
 print("Conectado a ", DATABASE_URL)
@@ -200,6 +200,9 @@ def create_language(data: LanguageCreate, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(new_lang)
         return LanguagePublic.model_validate(new_lang, from_attributes=True)
+    except IntegrityError:
+        db.rollback()
+        raise IntegrityError(status_code=409, detail="el titulo ya existe")
     except SQLAlchemyError:
         db.rollback()
         raise HTTPException(status_code=500, detail="Error al crear el language")

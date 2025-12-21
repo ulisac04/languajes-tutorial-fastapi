@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import List, Literal, Optional, Union
 import math
 import os
-from sqlalchemy import Integer, create_engine, String, Text, DateTime, func, select, UniqueConstraint, ForeignKey
+from sqlalchemy import Integer, create_engine, String, Text, DateTime, func, select, UniqueConstraint, ForeignKey, Table, Column
 from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
@@ -97,6 +97,26 @@ class PaginatedItem(BaseModel):
     search: Optional[str]
     items: List[LanguagePublic]
 
+
+lang_tags = Table(
+    "lang_tags",
+    Base.metadata,
+    Column("lang_id", ForeignKey("languages.id", ondelete="CASCADE"), primary_key=True),
+    Column("tag_id", ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True)
+)
+
+class TagORM(Base):
+    __tablename__ = "tags"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(30), unique=True, index=True)
+
+    languages: Mapped[List["LanguageORM"]] = relationship(
+        secondary=lang_tags,
+        back_populates="tags",
+        lazy="selectin"
+    )
+
 class FrameworkORM(Base):
     __tablename__ = "framework"
 
@@ -114,7 +134,13 @@ class LanguageORM(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    frameworks: Mapped[List["FrameworkORM"]] = relationship(back_populates="language")
+    frameworks: Mapped[List["FrameworkORM"]] = relationship(back_populates="languages")
+    tags: Mapped[List["TagORM"]] = relationship(
+        secondary=lang_tags,
+        back_populates="languages",
+        lazy="selectin",
+        passive_deletes=True
+    )
 
 
 

@@ -42,11 +42,18 @@ app = FastAPI(
 
 class Tag(BaseModel):
     name: str = Field(..., max_length=30, description="Nombre de la etiqueta")
+    model_config = ConfigDict(from_attributes=True)
+
+class FrameworkBase(BaseModel):
+    name: str
+    model_config = ConfigDict(from_attributes=True)
 
 class LanguageBase(BaseModel):
     title: str
     content: str
     tags: Optional[List[Tag]] = Field(default_factory=list) # []
+    framework: Optional[FrameworkBase] = None
+    model_config = ConfigDict(from_attributes=True)
 
 class LanguageCreate(BaseModel):
     title: str = Field(

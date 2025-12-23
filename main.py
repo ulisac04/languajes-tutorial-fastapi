@@ -51,8 +51,8 @@ class FrameworkBase(BaseModel):
 class LanguageBase(BaseModel):
     title: str
     content: str
-    tags: Optional[List[Tag]] = Field(default_factory=list) # []
-    framework: Optional[FrameworkBase] = None
+    tags: Optional[List[Tag]] = Field(default_factory=list)
+    frameworks: Optional[List[FrameworkBase]] = Field(default_factory=list)
     model_config = ConfigDict(from_attributes=True)
 
 class LanguageCreate(BaseModel):
@@ -70,6 +70,7 @@ class LanguageCreate(BaseModel):
         examples=["C++ es de bajo nivel"]
     )
     tags: List[Tag] = Field(default_factory=list) # []
+    frameworks: List[FrameworkBase] = Field(default_factory=list) # []
 
     @field_validator("title")
     @classmethod
@@ -141,7 +142,7 @@ class LanguageORM(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    frameworks: Mapped[List["FrameworkORM"]] = relationship(back_populates="languages")
+    frameworks: Mapped[List["FrameworkORM"]] = relationship(back_populates="language")
     tags: Mapped[List["TagORM"]] = relationship(
         secondary=lang_tags,
         back_populates="languages",
@@ -241,9 +242,40 @@ def create_language(data: LanguageCreate, db: Session = Depends(get_db)):
     )
 
     try:
+        # Agregar el lenguaje y hacer flush para obtener su id sin cerrar la transacción
         db.add(new_lang)
+        db.flush()
+
+        # Upsert de tags y asociación al lenguaje
+        for tag_in in data.tags or []:
+            tag_name = tag_in.name.strip()
+            if not tag_name:
+                continue
+            stmt_tag = select(TagORM).where(func.lower(TagORM.name) == tag_name.lower())
+            existing_tag = db.scalar(stmt_tag)
+            if existing_tag is None:
+                existing_tag = TagORM(name=tag_name)
+                db.add(existing_tag)
+                db.flush()
+            if existing_tag not in new_lang.tags:
+                new_lang.tags.append(existing_tag)
+
+        # Crear frameworks asociados al lenguaje (evitar duplicados por lenguaje)
+        for fw_in in data.frameworks or []:
+            fw_name = fw_in.name.strip()
+            if not fw_name:
+                continue
+            stmt_fw = select(FrameworkORM).where(
+                func.lower(FrameworkORM.name) == fw_name.lower()
+            )
+            existing_fw = db.scalar(stmt_fw)
+            if existing_fw is None:
+                db.add(FrameworkORM(name=fw_name, language=new_lang))
+
+        # Confirmar toda la transacción y refrescar el lenguaje con relaciones
         db.commit()
         db.refresh(new_lang)
+
         return LanguagePublic.model_validate(new_lang, from_attributes=True)
     except IntegrityError:
         db.rollback()
@@ -317,7 +349,7 @@ def delete_language(id: int, db: Session = Depends(get_db)):
     except SQLAlchemyError:
         db.rollback()
         raise HTTPException(status_code=500, detail="Error al eliminar")
-
-    raise HTTPException(status_code=404, detail="no se encontro el language")
+    
+    return
 
 
